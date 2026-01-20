@@ -1,124 +1,77 @@
 #include "CO5300Display.h"
 
+#include <esp_lcd_co5300.h>
 #include <Tactility/Logger.h>
 
-#include <esp_lcd_panel_commands.h>
 #include <esp_lcd_panel_dev.h>
-#include <esp_lcd_co5300.h>
 #include <esp_lvgl_port.h>
 
-static const auto LOGGER = tt::Logger("CO5300");
+static const char* TAG = "CO5300D";
 
-bool CO5300Display::createIoHandle(esp_lcd_panel_io_handle_t& outHandle) {
-    LOGGER.info("Starting");
-
-    const esp_lcd_panel_io_spi_config_t panel_io_config = {
-        .cs_gpio_num = configuration->csPin,
-        .dc_gpio_num = configuration->dcPin,
-        .spi_mode = 0,
-        .pclk_hz = configuration->pixelClockFrequency,
-        .trans_queue_depth = configuration->transactionQueueDepth,
-        .on_color_trans_done = nullptr,
-        .user_ctx = nullptr,
-        .lcd_cmd_bits = 32,
-        .lcd_param_bits = 8,
-        .flags = {
-            .quad_mode = true,
-        }
-    };
-
-    if (esp_lcd_new_panel_io_spi(configuration->spiHostDevice, &panel_io_config, &outHandle) != ESP_OK) {
-        LOGGER.error("Failed to create panel");
-        return false;
-    }
-
-    return true;
+esp_lcd_panel_io_spi_config_t CO5300Display::createPanelConfig() {
+    if (configuration->use_qspi_interface)
+    return CO5300_PANEL_IO_QSPI_CONFIG(configuration->csPin, NULL, NULL);
+    else    
+    return CO5300_PANEL_IO_SPI_CONFIG(configuration->csPin, configuration->dcPin, NULL, NULL);
+    // Attach the LCD to the SPI bus;
+    // return {
+    //     .reset_gpio_num = Configuration->resetPin,
+    //     .clkPin = Configuration->clkPin,
+    //     .csPin = Configuration->csPin,
+    //     .dcPin = Configuration->dcPin,
+    //     .d0Pin = Configuration->d0Pin,
+    //     .d1Pin = Configuration->d1Pin,
+    //     .d2Pin = Configuration->d2Pin,
+    //     .d3Pin = Configuration->d3Pin,
+    //     .tePin = Configuration->tePin,
+    //     .rgb_ele_order = Configuration->rgbElementOrder,
+    //     .data_endian = LCD_RGB_DATA_ENDIAN_LITTLE,
+    //     .bits_per_pixel = Configuration->bits_per_pixel,
+    //     .flags = {
+    //         .reset_active_high = false
+    //     },
+    //     .vendor_config = Configuration->vendor_config,
+    //     .spiHostDevice = Configuration->spiHostDevice,
+    //     .pixelClockFrequency = Configuration->pixelClockFrequency,
+    //     .transactionQueueDepth = Configuration->transactionQueueDepth
+    // };
 }
 
 bool CO5300Display::createPanelHandle(esp_lcd_panel_io_handle_t ioHandle, esp_lcd_panel_handle_t& panelHandle) {
+    
+    // if (configuration->use_qspi_interface) {
+    // const spi_bus_config_t buscfg = {
+    // .mosi_io_num = configuration->d0Pin,
+    // .miso_io_num = configuration->d1Pin,
+    // .sclk_io_num = configuration->clkPin,
+    // .quadwp_io_num = configuration->d2Pin,
+    // .quadhd_io_num = configuration->d3Pin,
+    // };
+    // //ESP_ERROR_CHECK(spi_bus_initialize(configuration->spiHostDevice, &buscfg, SPI_DMA_CH_AUTO));
+    // } else {
+    // const spi_bus_config_t buscfg = {
+    // .mosi_io_num = configuration->d0Pin,
+    // .miso_io_num = configuration->d1Pin,
+    // .sclk_io_num = configuration->clkPin,
+    // .quadwp_io_num = GPIO_NUM_NC,
+    // .quadhd_io_num = GPIO_NUM_NC,
+    // };
+    // //ESP_ERROR_CHECK(spi_bus_initialize(configuration->spiHostDevice, &buscfg, SPI_DMA_CH_AUTO));
+    // }
 
+    const esp_lcd_panel_io_spi_config_t io_config = createPanelConfig();
+    ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)configuration->spiHostDevice, &io_config, &ioHandle));
+
+    const co5300_vendor_config_t vendor_config = {
+        .flags = {
+            .use_qspi_interface = configuration->use_qspi_interface,
+        },
+    };
     const esp_lcd_panel_dev_config_t panel_config = {
         .reset_gpio_num = configuration->resetPin,
-        .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,
-        .data_endian = LCD_RGB_DATA_ENDIAN_LITTLE,
-        .bits_per_pixel = 16,
-        .flags = {
-            .reset_active_high = false
-        },
-        .vendor_config = nullptr
+        .rgb_ele_order = configuration->rgbElementOrder,
+        .bits_per_pixel = configuration->bits_per_pixel,
+        .vendor_config = (void *) &vendor_config,
     };
-
-    if (esp_lcd_new_panel_co5300(ioHandle, &panel_config, &panelHandle) != ESP_OK) {
-        LOGGER.error("Failed to create panel");
-        return false;
-    }
-
-    if (esp_lcd_panel_reset(panelHandle) != ESP_OK) {
-        LOGGER.error("Failed to reset panel");
-        return false;
-    }
-
-    if (esp_lcd_panel_init(panelHandle) != ESP_OK) {
-        LOGGER.error("Failed to init panel");
-        return false;
-    }
-
-    if (esp_lcd_panel_invert_color(panelHandle, configuration->invertColor) != ESP_OK) {
-        LOGGER.error("Failed to set panel to invert");
-        return false;
-    }
-
-    // Warning: it looks like LVGL rotation is broken when "gap" is set and the screen is moved to a non-default orientation
-    int gap_x = configuration->swapXY ? configuration->gapY : configuration->gapX;
-    int gap_y = configuration->swapXY ? configuration->gapX : configuration->gapY;
-    if (esp_lcd_panel_set_gap(panelHandle, gap_x, gap_y) != ESP_OK) {
-        LOGGER.error("Failed to set panel gap");
-        return false;
-    }
-
-    if (esp_lcd_panel_swap_xy(panelHandle, configuration->swapXY) != ESP_OK) {
-        LOGGER.error("Failed to swap XY ");
-        return false;
-    }
-
-    if (esp_lcd_panel_mirror(panelHandle, configuration->mirrorX, configuration->mirrorY) != ESP_OK) {
-        LOGGER.error("Failed to set panel to mirror");
-        return false;
-    }
-
-    if (esp_lcd_panel_disp_on_off(panelHandle, true) != ESP_OK) {
-        LOGGER.error("Failed to turn display on");
-        return false;
-    }
-
-    return true;
+    return esp_lcd_new_panel_co5300(ioHandle, &panel_config, &panelHandle) == ESP_OK;
 }
-
-lvgl_port_display_cfg_t CO5300Display::getLvglPortDisplayConfig(esp_lcd_panel_io_handle_t ioHandle, esp_lcd_panel_handle_t panelHandle) {
-    return lvgl_port_display_cfg_t {
-        .io_handle = ioHandle,
-        .panel_handle = panelHandle,
-        .control_handle = nullptr,
-        .buffer_size = configuration->bufferSize,
-        .double_buffer = false,
-        .trans_size = 0,
-        .hres = configuration->horizontalResolution,
-        .vres = configuration->verticalResolution,
-        .monochrome = false,
-        .rotation = {
-            .swap_xy = configuration->swapXY,
-            .mirror_x = configuration->mirrorX,
-            .mirror_y = configuration->mirrorY,
-        },
-        .color_format = LV_COLOR_FORMAT_RGB565,
-        .flags = {
-            .buff_dma = true,
-            .buff_spiram = false,
-            .sw_rotate = false,
-            .swap_bytes = true,
-            .full_refresh = false,
-            .direct_mode = false
-        }
-    };
-}
-

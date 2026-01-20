@@ -5,14 +5,16 @@
 #include <Tactility/lvgl/LvglSync.h>
 #include <PwmBacklight.h>
 
+#define SPI_TRANSFER_SIZE_LIMIT (AMOLED_HEIGHT * AMOLED_WIDTH * (LV_COLOR_DEPTH / 8))
+
 using namespace tt::hal;
 
 constexpr auto* TAG = "Waveshare";
 
 static DeviceVector createDevices() {
     return {
-        createDisplay(),
-        createSdCard()
+        createDisplay()
+        // createSdCard()
     };
 }
 
@@ -47,19 +49,19 @@ extern const Configuration hardwareConfiguration = {
         // Display
         spi::Configuration {
             .device = SPI2_HOST,
-            .dma = SPI_DMA_DISABLED,
+            .dma = SPI_DMA_CH_AUTO,
             .config = {
                 .mosi_io_num = GPIO_NUM_4,
-                .miso_io_num = GPIO_NUM_NC,
+                .miso_io_num = GPIO_NUM_5,
                 .sclk_io_num = GPIO_NUM_11,
-                .quadwp_io_num = GPIO_NUM_NC,
-                .quadhd_io_num = GPIO_NUM_NC,
+                .quadwp_io_num = GPIO_NUM_6,
+                .quadhd_io_num = GPIO_NUM_7,
                 .data4_io_num = GPIO_NUM_NC,
                 .data5_io_num = GPIO_NUM_NC,
                 .data6_io_num = GPIO_NUM_NC,
                 .data7_io_num = GPIO_NUM_NC,
                 .data_io_default_level = false,
-                .max_transfer_sz = ((240 * (240 / 10)) * LV_COLOR_DEPTH / 8),
+                .max_transfer_sz = SPI_TRANSFER_SIZE_LIMIT,
                 .flags = 0,
                 .isr_cpu_id = ESP_INTR_CPU_AFFINITY_AUTO,
                 .intr_flags = 0
@@ -67,32 +69,32 @@ extern const Configuration hardwareConfiguration = {
             .initMode = spi::InitMode::ByTactility,
             .isMutable = false,
             .lock = tt::lvgl::getSyncLock() // esp_lvgl_port owns the lock for the display
-        },
+        }
         // SD card available via external sd card module and uses VSYS (5V) / GND / IO15 / IO16 / IO17 / IO18 pins.
         // Common micro sd card module you'd find on aliexpress with voltage regulator onboard. Others may work.
         // JST SH 1.0 Header, GND / VSYS (5V) / RESET / BOOT / GND / 3.3V / IO15 / IO16 / IO17 / IO18 / IO21 / IO33
-         spi::Configuration {
-            .device = SPI3_HOST,
-            .dma = SPI_DMA_CH_AUTO,
-            .config = {
-                .mosi_io_num = GPIO_NUM_1,
-                .miso_io_num = GPIO_NUM_3,
-                .sclk_io_num = GPIO_NUM_2,
-                .quadwp_io_num = GPIO_NUM_NC,
-                .quadhd_io_num = GPIO_NUM_NC,
-                .data4_io_num = GPIO_NUM_NC,
-                .data5_io_num = GPIO_NUM_NC,
-                .data6_io_num = GPIO_NUM_NC,
-                .data7_io_num = GPIO_NUM_NC,
-                .data_io_default_level = false,
-                .max_transfer_sz = 32768,
-                .flags = 0,
-                .isr_cpu_id = ESP_INTR_CPU_AFFINITY_AUTO,
-                .intr_flags = 0
-            },
-            .initMode = spi::InitMode::ByTactility,
-            .isMutable = false,
-            .lock = nullptr // No custom lock needed
-        }
+        //  spi::Configuration {
+        //     .device = SPI3_HOST,
+        //     .dma = SPI_DMA_CH_AUTO,
+        //     .config = {
+        //         .mosi_io_num = GPIO_NUM_1,
+        //         .miso_io_num = GPIO_NUM_3,
+        //         .sclk_io_num = GPIO_NUM_2,
+        //         .quadwp_io_num = GPIO_NUM_NC,
+        //         .quadhd_io_num = GPIO_NUM_NC,
+        //         .data4_io_num = GPIO_NUM_NC,
+        //         .data5_io_num = GPIO_NUM_NC,
+        //         .data6_io_num = GPIO_NUM_NC,
+        //         .data7_io_num = GPIO_NUM_NC,
+        //         .data_io_default_level = false,
+        //         .max_transfer_sz = 32768,
+        //         .flags = 0,
+        //         .isr_cpu_id = ESP_INTR_CPU_AFFINITY_AUTO,
+        //         .intr_flags = 0
+        //     },
+        //     .initMode = spi::InitMode::ByTactility,
+        //     .isMutable = false,
+        //     .lock = nullptr // No custom lock needed
+        // }
     }
 };

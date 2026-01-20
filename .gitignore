@@ -1,6 +1,6 @@
 .idea/
 .DS_Store
-
+.cache
 build/
 buildsim/
 build-sim/

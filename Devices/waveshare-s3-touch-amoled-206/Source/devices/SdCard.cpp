@@ -17,8 +17,10 @@ std::shared_ptr<SdCardDevice> createSdCard() {
         std::vector<gpio_num_t>(),
         SPI3_HOST
     );
-
+        ESP_LOGI("SD<","DID SD");
     return std::make_shared<SpiSdCardDevice>(
         std::move(configuration)
     );
+
+
 }

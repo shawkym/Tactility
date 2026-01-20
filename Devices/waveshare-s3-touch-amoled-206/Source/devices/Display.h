@@ -1,14 +1,11 @@
 #pragma once
 
 #include <Tactility/hal/display/DisplayDevice.h>
-#include <driver/gpio.h>
-#include <driver/spi_common.h>
-#include <memory>
 
-constexpr auto LCD_HORIZONTAL_RESOLUTION = 410;
-constexpr auto LCD_VERTICAL_RESOLUTION = 502;
-constexpr auto LCD_BUFFER_HEIGHT = LCD_VERTICAL_RESOLUTION / 10;
-constexpr auto LCD_BUFFER_SIZE = LCD_HORIZONTAL_RESOLUTION * LCD_BUFFER_HEIGHT;
+constexpr auto AMOLED_WIDTH = 410;
+constexpr auto AMOLED_HEIGHT = 502;
+constexpr auto AMOLED_BUFFER_HEIGHT = AMOLED_HEIGHT / 10;
+constexpr auto AMOLED_BUFFER_SIZE = AMOLED_WIDTH * AMOLED_BUFFER_HEIGHT;
 
 
 std::shared_ptr<tt::hal::display::DisplayDevice> createDisplay();

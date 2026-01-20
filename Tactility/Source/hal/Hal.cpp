@@ -7,7 +7,6 @@
 #include <Tactility/hal/spi/SpiInit.h>
 #include <Tactility/hal/uart/UartInit.h>
 #include <Tactility/Logger.h>
-
 #include <Tactility/hal/display/DisplayDevice.h>
 #include <Tactility/hal/sdcard/SdCardMounting.h>
 #include <Tactility/hal/touch/TouchDevice.h>
@@ -22,16 +21,29 @@ void registerDevices(const Configuration& configuration) {
 
     auto devices = configuration.createDevices();
     for (auto& device : devices) {
+        LOGGER.info("Registering device");
+        if (device->getType() == Device::Type::I2c) LOGGER.info("I2C");
+        if (device->getType() == Device::Type::Touch) ESP_LOGI("REGISTER","Touch");
+        if (device->getType() == Device::Type::Display) ESP_LOGI("REGISTER","Display");
+        if (device->getType() == Device::Type::SdCard) ESP_LOGI("REGISTER","SdCard");
+        if (device->getType() == Device::Type::Keyboard) ESP_LOGI("REGISTER","Keyboard");
+        if (device->getType() == Device::Type::Encoder) ESP_LOGI("REGISTER","Encoder");
+        if (device->getType() == Device::Type::Power) ESP_LOGI("REGISTER","Power");
+        if (device->getType() == Device::Type::Gps) ESP_LOGI("REGISTER","GPS");
+        if (device->getType() == Device::Type::Other) ESP_LOGI("REGISTER","Other");
         registerDevice(device);
+        LOGGER.info("Finished Registering device");
 
         // Register attached devices
         if (device->getType() == Device::Type::Display) {
             const auto display = std::static_pointer_cast<display::DisplayDevice>(device);
             assert(display != nullptr);
+            ESP_LOGI("DISP","DISP NOT NULL");
             const std::shared_ptr<Device> touch = display->getTouchDevice();
             if (touch != nullptr) {
                 registerDevice(touch);
             }
+            ESP_LOGI("Touch","DISP touch NOT NULL");
         }
     }
 }
